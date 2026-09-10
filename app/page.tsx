@@ -139,7 +139,7 @@ export default function Home() {
     name: clip.name,
   });
 
-  const generate = async () => {
+  const generate = async (requestedSeed = seed) => {
     setBusy(true);
     setError(null);
 
@@ -153,7 +153,7 @@ export default function Home() {
           ctas: ctas.map(serialize),
           rules: {
             count,
-            seed,
+            seed: requestedSeed,
             avoidConsecutiveHook: true,
             avoidConsecutiveBody: bodies.length > 1,
             avoidConsecutiveCta: true,
@@ -171,9 +171,10 @@ export default function Home() {
     }
   };
 
-  const remix = () => {
-    setSeed((value) => value + 1);
-    setTimeout(generate, 0);
+  const remix = async () => {
+    const nextSeed = seed + 1;
+    setSeed(nextSeed);
+    await generate(nextSeed);
   };
 
   const updatePreset = <K extends keyof EditPreset>(key: K, value: EditPreset[K]) => {
@@ -242,7 +243,7 @@ export default function Home() {
       </section>
 
       <section className="actionCard">
-        <button className="primaryButton" type="button" disabled={busy} onClick={generate}>
+        <button className="primaryButton" type="button" disabled={busy} onClick={() => void generate()}>
           {busy ? "Montando a fila…" : `✨ Gerar ${count} variações`}
         </button>
         <span>Combinações únicas · distribuição equilibrada · sem sequência repetitiva</span>
@@ -256,7 +257,7 @@ export default function Home() {
               <p className="eyebrow">FILA PRONTA</p>
               <h2>{variations.length} vídeos planejados</h2>
             </div>
-            <button type="button" className="secondaryButton" onClick={remix}>🎲 Remixar</button>
+            <button type="button" className="secondaryButton" onClick={() => void remix()}>🎲 Remixar</button>
           </div>
 
           <div className="variationList">
