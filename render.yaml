@@ -1,0 +1,28 @@
+# Paid deployment PROPOSAL. Do not apply without the owner's cost approval.
+# Verified list pricing: 1 CPU / 2 GB = USD 25/month; 10 GB disk = USD 2.50/month.
+# Bandwidth/build overages and account plan fees, if any, are separate.
+services:
+  - type: web
+    name: sol-video-factory
+    runtime: docker
+    plan: 1c-2g
+    region: virginia
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    disk:
+      name: video-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATA_DIR
+        value: /data
+      - key: RENDER_THREADS
+        value: "1"
+      - key: MAX_STORAGE_MB
+        value: "4000"

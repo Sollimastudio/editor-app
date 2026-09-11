@@ -1,32 +1,32 @@
-name: CI
-
+name: Verify executable editor
 on:
   push:
-    branches: [main, "feat/**"]
-  pull_request:
     branches: [main]
-
+  pull_request:
 jobs:
-  verify:
+  tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install media runtime
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-liberation
+      - name: Install Python dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Check syntax
+        run: |
+          python -m compileall -q server
+          node --check studio/app.js
+      - name: Unit, security and real MP4 tests
+        env:
+          APP_ENV: local
+          RENDER_THREADS: '1'
+        run: python -m pytest -q tests
