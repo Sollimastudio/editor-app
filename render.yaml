@@ -5,10 +5,10 @@ services:
   - type: web
     name: sol-video-factory
     runtime: docker
-    plan: standard
+    plan: 1c-2g
     region: virginia
     healthCheckPath: /health
-    autoDeployTrigger: off
+    autoDeployTrigger: "off"
     disk:
       name: video-data
       mountPath: /data
