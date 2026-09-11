@@ -1,0 +1,16 @@
+services:
+  studio:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      APP_ENV: production
+      APP_PASSWORD: ${APP_PASSWORD:?Configure APP_PASSWORD in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?Configure SESSION_SECRET in .env}
+      DATA_DIR: /data
+      RENDER_THREADS: "2"
+    volumes:
+      - studio_data:/data
+    restart: unless-stopped
+volumes:
+  studio_data:
