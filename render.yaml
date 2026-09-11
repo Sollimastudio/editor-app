@@ -1,11 +1,15 @@
-# Paid deployment PROPOSAL. Do not apply without the owner's cost approval.
-# Verified list pricing: 1 CPU / 2 GB = USD 25/month; 10 GB disk = USD 2.50/month.
-# Bandwidth/build overages and account plan fees, if any, are separate.
+# Initial hosting cost approved by the owner in this conversation.
+# Target workspace: My Workspace (tea-dahk75h594qs73fb5meg).
+# Approved baseline: USD 25/month compute + USD 2.50/month for 10 GB disk.
+# Usage overages, taxes and existing workspace fees, if any, are separate.
+# Creating the Blueprint in the Render Dashboard is still required.
 services:
   - type: web
     name: sol-video-factory
     runtime: docker
+    branch: main
     plan: 1c-2g
+    numInstances: 1
     region: virginia
     healthCheckPath: /health
     autoDeployTrigger: "off"
