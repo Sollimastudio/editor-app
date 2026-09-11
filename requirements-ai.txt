@@ -1,0 +1,2 @@
+# Optional, not required for MP4 export. Model download requires network access.
+faster-whisper==1.2.1
