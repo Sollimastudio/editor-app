@@ -1,155 +1,76 @@
-# Video Factory
+# Sol Video Factory — v0.2
 
-Aplicativo mobile-first para multiplicar vídeos curtos a partir de blocos gravados e aplicar edição automática em lote.
+Editor pessoal de vídeos curtos: envie aberturas, conteúdos e encerramentos, escolha um template e receba MP4s reais. A V1 era um planejador; esta versão inclui API, armazenamento, fila persistente, FFmpeg e exportação.
 
-## Objetivo
+**Estado:** implementação testada localmente; publicação em nuvem ainda depende de conexão/autorização da hospedagem e confirmação de custos. Não existe URL pública confirmada nesta entrega. Não confundir código validado com serviço publicado.
 
-A pessoa grava poucos blocos uma única vez:
+## Funciona nesta versão
 
-- **Ganchos**: aberturas curtas.
-- **Miolos**: conteúdo principal.
-- **CTAs**: fechamentos.
+- Projetos persistentes, senha do estúdio em produção e sessão HTTP-only.
+- Upload em blocos de 2 MB; retomada ao selecionar novamente o mesmo arquivo; validação de formato, duração, limites e integridade.
+- Combinações únicas, seleção determinística e distribuição por uso. As regras anti-repetição são preferências, não garantias quando os arquivos disponíveis não permitem cumpri-las.
+- 6 templates reais: fala direta, cima/baixo, lado a lado, sobreposição, chroma key e print + apresentador.
+- Imagem ou vídeo de apoio; vídeo de fundo e música em loop.
+- Cortes por tempo; remoção opcional de pausas longas; normalização de áudio; música com redução de volume durante a fala.
+- Legendas SRT importadas e adaptadas aos cortes; título inicial e assinatura; zoom leve opcional.
+- MP4 H.264/AAC em 360×640, 720×1280 e 1080×1920, baixável individualmente e em ZIP.
+- Fila SQLite, processamento fora da requisição, cancelamento e retomada após interrupção; cache de clipes para evitar reprocessamento redundante.
+- Origens preservadas. Nenhuma publicação automática em redes sociais.
 
-O sistema cria combinações únicas e equilibradas, evita repetições seguidas e prepara uma fila para edição/renderização automática.
+## Ainda NÃO está ativo
 
-Exemplo: `5 ganchos × 3 miolos × 5 CTAs = 75 combinações possíveis`.
+- Transcrição automática: adaptador faster-whisper implementado, mas modelo e dependências opcionais não foram instalados/validados nesta entrega. Sem isso, a interface não permite ativar a opção.
+- Sincronização labial: não implementada e não anunciada como funcional.
+- Remoção de fundo sem chroma, rastreamento de rosto e corte semântico por IA.
+- Contas multiusuário, compartilhamento, cobrança e publicação social. Este app é um estúdio privado de um usuário, não um SaaS multiusuário.
 
-## Estado atual — V1 em construção
+## Arquitetura atual
 
-Já implementado:
+Browser → interface estática em `studio/` → API FastAPI → SQLite/arquivos privados → worker único → FFmpeg → MP4/ZIP.
 
-- Interface responsiva e simples para celular.
-- Upload local de vários vídeos por categoria.
-- Preview dos clipes.
-- Cálculo instantâneo do número de combinações possíveis.
-- Motor determinístico de combinação com diversidade.
-- Regras para evitar repetição consecutiva de gancho, miolo e CTA.
-- Quantidade desejada de vídeos (1–500).
-- Botão **Remixar** para gerar outra distribuição.
-- Preset de edição com opções para silêncios, legendas, áudio, enquadramento e zoom.
-- Contrato modular do pipeline de renderização.
-- Camada opcional de lip-sync com confirmação de consentimento.
+O motor pesado roda no servidor, não no telefone. Não é necessário manter a página aberta depois de concluir o upload e registrar o lote. Um servidor desligado não continua renderizando; ao reiniciar, a fila retoma os lotes interrompidos.
 
-Ainda não conectado nesta etapa:
+Para estes templates, FFmpeg compõe diretamente o vídeo. Remotion, Supabase e Next.js não são dependências do fluxo executável V2. A V1 foi preservada em `legacy/v1/` no GitHub e no histórico. Essa mudança evita deixar a entrega dependente de credenciais externas ou de um renderizador ainda não implementado.
 
-- Upload persistente em nuvem.
-- Transcrição real.
-- Processamento FFmpeg.
-- Render MP4 via worker Remotion.
-- Galeria persistente de resultados.
-- Worker GPU para lip-sync.
+## Execução local (desenvolvimento)
 
-## Arquitetura planejada
-
-```text
-Celular / navegador
-       │
-       ▼
-Next.js — interface simples
-       │
-       ├── Motor de combinações
-       │
-       ├── Upload → Storage
-       │
-       └── Criação de jobs
-                │
-                ▼
-            Fila de jobs
-                │
-                ▼
-      Worker de processamento
-       ├── FFmpeg / ffprobe
-       ├── detecção de fala/silêncio
-       ├── transcrição com timestamps
-       ├── enquadramento de rosto
-       ├── lip-sync GPU (opcional)
-       └── Remotion
-                │
-                ▼
-       MP4 vertical 1080×1920
-                │
-                ▼
-        Galeria / download
-```
-
-### Stack
-
-- **Next.js + React + TypeScript** — aplicativo web/mobile-first.
-- **Remotion 4** — composição programática, overlays, legendas e render.
-- **FFmpeg** — codecs, concatenação, áudio e pré-processamento.
-- **Supabase (fase de integração)** — autenticação, banco, Storage e fila/estado dos jobs.
-- **Worker CPU/GPU separado** — evita processar vídeo pesado no telefone ou na função web.
-
-## Estratégia de edição automática
-
-O pipeline está modelado em `lib/render-pipeline.ts`:
-
-1. `ingest` — valida arquivo, codec, duração e resolução.
-2. `analyze` — detecta fala, cenas, rosto e trechos úteis.
-3. `trim` — remove pausas mortas.
-4. `transcribe` — cria timestamps para legendas.
-5. `reframe` — mantém o assunto no quadro 9:16.
-6. `lip-sync` — opcional, executado apenas em worker GPU.
-7. `compose` — legendas, zoom, transições e identidade visual.
-8. `render` — MP4 H.264/AAC, 1080×1920.
-9. `publish` — salva e entrega o arquivo na galeria.
-
-## Lip-sync
-
-A arquitetura não acopla o app a um único modelo. Um adaptador poderá selecionar, por exemplo:
-
-- **Fast** — modelo otimizado para velocidade.
-- **Premium** — modelo priorizando qualidade.
-
-Lip-sync deve rodar fora do frontend, em infraestrutura com GPU. A camada de domínio exige confirmação de que o rosto é da própria pessoa ou de um adulto que autorizou a alteração.
-
-## Rodar localmente
-
-Requer Node.js 22+.
+Requisitos: Python 3.13, FFmpeg/ffprobe 7.1 e uma fonte sans-serif disponível.
 
 ```bash
-npm install
-npm run dev
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+APP_ENV=local python -m server
 ```
 
-Abra `http://localhost:3000`.
+Abra `http://127.0.0.1:8000`. O modo local não tem senha e recusa clientes não locais. Não exponha esse modo em rede pública.
 
-Verificações:
+## Produção
+
+O `Dockerfile` entrega um único serviço com usuário não-root. Configure `APP_PASSWORD` (mínimo 16 caracteres), `SESSION_SECRET` (32+), HTTPS e disco persistente em `/data`. Sem os segredos, o servidor se recusa a iniciar em modo de produção.
+
+`render.yaml` descreve uma implantação paga com disco persistente. **Não aplicar sem conferir e aprovar os custos.** O conector Render foi sugerido; nenhum serviço foi provisionado. A tentativa pelo conector Vercel falhou por divergência de argumentos no próprio conector.
+
+Use apenas uma instância e um worker Uvicorn nesta versão. O worker de vídeos compartilha o processo do serviço, mas não a requisição HTTP. Para escala maior, separar fila/processamento e substituir arquivos locais por armazenamento de objetos.
+
+## Uso
+
+1. Crie um projeto e envie seus arquivos nos três espaços.
+2. Para tela dividida/chroma, adicione imagem ou vídeo de apoio.
+3. Escolha template e ajustes; use **Editar** em um clipe para cortar ou importar SRT.
+4. Exporte um vídeo leve de teste, revise e gere o lote desejado.
+5. Baixe cada MP4 ou o ZIP; faça sua revisão antes de publicar.
+
+A interface mostra um esboço de composição, não um preview final. A exportação de teste produz o resultado real. O chroma key requer fundo de cor uniforme e boa iluminação. “Preencher” corta o centro, não acompanha rostos.
+
+## Testes
 
 ```bash
-npm run typecheck
-npm run lint
-npm run build
+pip install -r requirements-dev.txt
+python -m pytest -q tests
+node --check studio/app.js
+# Com o servidor local iniciado:
+TEST_OUTPUT=/tmp/vf-smoke python scripts/smoke_test.py
 ```
 
-## Próximas entregas
-
-### Fase 2 — Render de verdade
-
-- Storage de uploads.
-- Banco de projetos/clipes/jobs.
-- Fila de processamento.
-- Worker FFmpeg + Remotion.
-- Download de vídeos renderizados.
-
-### Fase 3 — Editor inteligente
-
-- Transcrição palavra por palavra.
-- Remoção de silêncio orientada por fala.
-- Legenda dinâmica.
-- Face tracking e auto-reframe.
-- Presets salvos de edição.
-- Música e ducking automático.
-
-### Fase 4 — IA de vídeo
-
-- Lip-sync Fast/Premium.
-- Controle de qualidade automático.
-- Comparação A/B das variações.
-- Metadados de conteúdo sintético/alterado quando aplicável.
-
-## Princípio de produto
-
-**Poucos botões para a pessoa. Muitas decisões automáticas por baixo.**
-
-A interface deve continuar fácil mesmo que o motor fique mais sofisticado.
+Resultados e limitações em `docs/VERIFICACAO.md`. Testes com vídeos sintéticos não substituem validação com gravações reais de iPhone, diferentes codecs e sessões prolongadas.

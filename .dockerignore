@@ -1,0 +1,12 @@
+.git
+.venv
+__pycache__
+data
+test-data
+node_modules
+.next
+legacy
+.env
+.env.*
+*.mp4
+*.zip
